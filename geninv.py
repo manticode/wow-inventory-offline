@@ -1,5 +1,6 @@
 import argparse
 import re
+import csv
 from slpp import slpp as lua
 
 
@@ -7,6 +8,7 @@ def prerun():
     """ Check input args are valid. """
     argparser = argparse.ArgumentParser(description="Inventory database file.")
     argparser.add_argument("-i", help="the lua datafile", dest="infilename")
+    argparser.add_argument("-o", help="Output filename in CSV format", dest="outfilename")
     argparser.print_help()
     args = argparser.parse_args()
     luafile = open(args.infilename, "r")
@@ -26,7 +28,7 @@ def parse_lua(luadb, toon_name, realm_name):
 
 
 def extract_item_name(item_string):
-    item_name = re.search("^.*\[([a-zA-Z0-9\s\:]*)\].*$", item_string)
+    item_name = re.search("^.*\[([a-zA-Z0-9\s\:\',\-]*)\].*$", item_string)
     if item_name:
         return item_name.group(1)
 
@@ -48,6 +50,7 @@ def get_item_qty(lua_obj, gu_toon_name, item_id_list, ):
             if item_qty:
                 print("item_qty: ", item_qty)
                 print("item id: ", item_id_lookup, " .. qty: ", item_qty)
+
                 storage_list_qty.append(item_qty)
             else:
                 print("moving onto next container")
@@ -84,6 +87,19 @@ def iter_luadb(lua_obj, toon_name, realm_name):
     return storage_list_itemid, storage_list_itemname
 
 
+def create_combined_inv(item_id_list, item_name_list, item_qty_list):
+    zip_inv = zip(item_name_list, item_qty_list)
+    dict_inv = dict(zip_inv)
+    print(dict_inv)
+    return dict_inv
+
+def write_out_csv(inv_dict, outfile):
+    with open(outfile, "w") as file_handle:
+        writer = csv.writer(file_handle)
+        writer.writerows(inv_dict.items())
+        file_handle.close()
+
+
 def main():
     """ Run main part of script. """
     print("main func")
@@ -93,7 +109,8 @@ def main():
 if __name__ == "__main__":
     toon = "Bankotar"
     realm = "Hydraxian Waterlords"
-    print("preparing")
     databaseobj = prerun()
     itemid_list, itemname_list, itemqty_list = parse_lua(databaseobj, toon, realm)
+    inventory_dict = create_combined_inv(itemid_list, itemname_list, itemqty_list)
+    write_out_csv(inventory_dict, "inventory.csv")
     main()
