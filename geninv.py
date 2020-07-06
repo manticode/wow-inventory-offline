@@ -21,7 +21,7 @@ def parse_lua(luadb, toon_name, realm_name):
     inventorydataparsed = lua.decode(inventorydata)
     print(inventorydataparsed)
     itemid_list, itemname_list = iter_luadb(inventorydataparsed, toon_name, realm_name)
-    get_item_qty(inventorydataparsed, gu_toon_name, itemid_list)
+    qty_list = get_item_qty(inventorydataparsed, gu_toon_name, itemid_list)
     return itemid_list, itemname_list, qty_list
 
 
@@ -51,10 +51,11 @@ def get_item_qty(lua_obj, gu_toon_name, item_id_list, ):
                 storage_list_qty.append(item_qty)
             else:
                 print("moving onto next container")
-                break
+                pass
         print("item_id_list complete")
     print("bank_inv_qty_lookup complete")
     print(storage_list_qty)
+    return storage_list_qty
 
 def iter_luadb(lua_obj, toon_name, realm_name):
     """ Extract the stuff we want. Each bag """
@@ -94,5 +95,5 @@ if __name__ == "__main__":
     realm = "Hydraxian Waterlords"
     print("preparing")
     databaseobj = prerun()
-    parse_lua(databaseobj, toon, realm)
+    itemid_list, itemname_list, itemqty_list = parse_lua(databaseobj, toon, realm)
     main()
