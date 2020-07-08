@@ -9,20 +9,22 @@ def prerun():
     argparser = argparse.ArgumentParser(description="Inventory database file.")
     argparser.add_argument("-i", help="the lua datafile", dest="infilename")
     argparser.add_argument("-o", help="Output filename in CSV format", dest="outfilename")
+    argparser.add_argument("-n", "--toon_name", help="Character (toon) nam", dest="toon_name")
+    argparser.add_argument("-r", "--realm_name", help="Realm (server) name. Defaults to Hydraxian Waterlords if not "
+                                                      "specified", dest="realm_name")
     argparser.print_help()
     args = argparser.parse_args()
     luafile = open(args.infilename, "r")
-    return luafile
+    gu_char_name = get_unique_char_name(args.toon_name, args.realm_name)
+    return luafile, gu_char_name
 
 
-def parse_lua(luadb, toon_name, realm_name):
+def parse_lua(luadb, gu_toon_name):
     """ Parse the lua data"""
-    print("parsing...")
-    gu_toon_name = toon_name + " - " + realm_name
     inventorydata = luadb.read()
+    inventorydata = "{ "+inventorydata+" }"
     inventorydataparsed = lua.decode(inventorydata)
-    print(inventorydataparsed)
-    itemid_list, itemname_list = iter_luadb(inventorydataparsed, toon_name, realm_name)
+    itemid_list, itemname_list = iter_luadb(inventorydataparsed, gu_toon_name)
     qty_list = get_item_qty(inventorydataparsed, gu_toon_name, itemid_list)
     return itemid_list, itemname_list, qty_list
 
@@ -33,7 +35,7 @@ def extract_item_name(item_string):
         return item_name.group(1)
 
 
-def get_item_qty(lua_obj, gu_toon_name, item_id_list, ):
+def get_item_qty(lua_obj, gu_toon_name, item_id_list):
     """ Correlate quantities for respective items."""
     bank_inv_qty_lookup = lua_obj["AskMrRobotDbClassic"]["char"][gu_toon_name]["BankItemsAndCounts"]
     storage_list_qty = []
@@ -51,9 +53,14 @@ def get_item_qty(lua_obj, gu_toon_name, item_id_list, ):
     return storage_list_qty
 
 
-def iter_luadb(lua_obj, toon_name, realm_name):
-    """ Extract the stuff we want. Each bag """
+def get_unique_char_name(toon_name, realm_name):
+    """ globally unique toon name in Name - Realm format"""
     gu_char_name = toon_name + " - " + realm_name
+    return gu_char_name
+
+
+def iter_luadb(lua_obj, gu_char_name):
+    """ Extract the stuff we want. Each bag """
     bank_inv_lookup = lua_obj["AskMrRobotDbClassic"]["char"][gu_char_name]["BankItems"]
     storage_list_itemid = []
     storage_list_itemname = []
@@ -67,15 +74,12 @@ def iter_luadb(lua_obj, toon_name, realm_name):
                 storage_list_itemname.append(extract_item_name(slot_item["link"]))
         if isinstance(bank_inv_lookup[key], dict):
             iter_luadb(bank_inv_lookup[key], toon_name, realm_name)
-    print(storage_list_itemid)
-    print(storage_list_itemname)
     return storage_list_itemid, storage_list_itemname
 
 
 def create_combined_inv(item_id_list, item_name_list, item_qty_list):
     zip_inv = zip(item_name_list, item_qty_list)
     dict_inv = dict(zip_inv)
-    print(dict_inv)
     return dict_inv
 
 
@@ -87,9 +91,7 @@ def write_out_csv(inv_dict, outfile):
 
 
 if __name__ == "__main__":
-    toon = "Bankotar"
-    realm = "Hydraxian Waterlords"
-    databaseobj = prerun()
-    itemid_list, itemname_list, itemqty_list = parse_lua(databaseobj, toon, realm)
+    databaseobj, gu_name = prerun()
+    itemid_list, itemname_list, itemqty_list = parse_lua(databaseobj, gu_name)
     inventory_dict = create_combined_inv(itemid_list, itemname_list, itemqty_list)
     write_out_csv(inventory_dict, "inventory.csv")
