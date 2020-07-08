@@ -35,42 +35,29 @@ def extract_item_name(item_string):
 
 def get_item_qty(lua_obj, gu_toon_name, item_id_list, ):
     """ Correlate quantities for respective items."""
-    """ TO DO - invert the container lookup to be inside the itemid list lookup otherwise it fails. """
     bank_inv_qty_lookup = lua_obj["AskMrRobotDbClassic"]["char"][gu_toon_name]["BankItemsAndCounts"]
     storage_list_qty = []
-    print("performing qty lookup")
-    for container_id in bank_inv_qty_lookup:
-        print(container_id)
-        bank_container = bank_inv_qty_lookup[container_id]
-        print("container: ", bank_container)
-        print(bank_container)
-        for item_id_lookup in item_id_list:
-            print("looking up:", item_id_lookup)
+    qty_insert = 0
+    for item_id_lookup in item_id_list:
+        for container_id in bank_inv_qty_lookup:
+            bank_container = bank_inv_qty_lookup[container_id]
             item_qty = bank_container.get(item_id_lookup)
             if item_qty:
-                print("item_qty: ", item_qty)
-                print("item id: ", item_id_lookup, " .. qty: ", item_qty)
-
-                storage_list_qty.append(item_qty)
+                qty_insert = qty_insert + item_qty
             else:
-                print("moving onto next container")
                 pass
-        print("item_id_list complete")
-    print("bank_inv_qty_lookup complete")
-    print(storage_list_qty)
+        storage_list_qty.append(qty_insert)
+        qty_insert = 0
     return storage_list_qty
+
 
 def iter_luadb(lua_obj, toon_name, realm_name):
     """ Extract the stuff we want. Each bag """
     gu_char_name = toon_name + " - " + realm_name
-    print("WoW Unique name: ", gu_char_name)
     bank_inv_lookup = lua_obj["AskMrRobotDbClassic"]["char"][gu_char_name]["BankItems"]
     storage_list_itemid = []
     storage_list_itemname = []
     for key in bank_inv_lookup:
-        print("bag id: ", key)
-        print("contents of bag: ", bank_inv_lookup[key])
-        print("type: ", type(bank_inv_lookup[key]))
         bank_container = bank_inv_lookup[key]
         for slot_item in bank_container:
             if slot_item["id"] in storage_list_itemid:
@@ -78,8 +65,6 @@ def iter_luadb(lua_obj, toon_name, realm_name):
             else:
                 storage_list_itemid.append(slot_item["id"])
                 storage_list_itemname.append(extract_item_name(slot_item["link"]))
-            print("slot item: ", slot_item["id"], "....", slot_item["link"])
-
         if isinstance(bank_inv_lookup[key], dict):
             iter_luadb(bank_inv_lookup[key], toon_name, realm_name)
     print(storage_list_itemid)
@@ -93,17 +78,12 @@ def create_combined_inv(item_id_list, item_name_list, item_qty_list):
     print(dict_inv)
     return dict_inv
 
+
 def write_out_csv(inv_dict, outfile):
     with open(outfile, "w") as file_handle:
         writer = csv.writer(file_handle)
         writer.writerows(inv_dict.items())
         file_handle.close()
-
-
-def main():
-    """ Run main part of script. """
-    print("main func")
-    inv_dict = {}
 
 
 if __name__ == "__main__":
@@ -113,4 +93,3 @@ if __name__ == "__main__":
     itemid_list, itemname_list, itemqty_list = parse_lua(databaseobj, toon, realm)
     inventory_dict = create_combined_inv(itemid_list, itemname_list, itemqty_list)
     write_out_csv(inventory_dict, "inventory.csv")
-    main()
